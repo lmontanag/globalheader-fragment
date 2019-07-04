@@ -1,0 +1,57 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: globalheader-fragment-v1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: globalheader-fragment
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 0
+  revisionHistoryLimit: 0 # no history for replica set means no kubernetes roll back
+  template:
+    metadata:
+      labels:
+        app: globalheader-fragment
+        version: v1
+    spec:
+      containers:
+        - name: globalheader-fragment
+          image: globalheader/globalheader-fragment
+          lifecycle:
+            preStop:
+              exec:
+                command: [
+                  "sh", "-c",
+                  # Introduce a delay to the shutdown sequence to wait for the
+                  # pod eviction event to propagate.
+                  "sleep 5"
+                ]
+          ports:
+            - containerPort: 8000
+          env:
+            - name: ENDPOINT
+              value: http://globalheader-api:8080/configurations
+          livenessProbe:
+            httpGet:
+              # TODO: to be changed with a proper health-check endpoint
+              path: /7b9e5546-f48e-4d16-9d3b-231949398d4d # this is not a proper health-check endpoint and it will fail if there is no configuration with this id
+              port: 8000
+            timeoutSeconds: 60
+            initialDelaySeconds: 360
+            periodSeconds: 60
+            successThreshold: 1
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              # TODO: to be changed with a proper health-check endpoint
+              path: /7b9e5546-f48e-4d16-9d3b-231949398d4d # this is not a proper health-check endpoint and it will fail if there is no configuration with this id
+              port: 8000
+            timeoutSeconds: 60
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            successThreshold: 1
+            failureThreshold: 5
